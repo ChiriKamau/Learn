@@ -164,6 +164,6 @@ def generate_header_file(rgb565_array, output_file, width, height, variable_name
 
 if __name__ == "__main__":
     # Example usage
-    input_file = "me2.jpg"  # Change to your input file
-    output_file = "me2_img.h"
+    input_file = "skubi.png"  # Change to your input file
+    output_file = "skubi_img.h"
     convert_image_for_m5stack(input_file, output_file)
