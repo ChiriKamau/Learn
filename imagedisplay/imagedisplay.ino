@@ -1,5 +1,5 @@
 #include <M5Stack.h>
-#include "skubi_img.h"  // Include the generated header file
+#include "Rose_img.h"  // Include the generated header file
 
 void setup() {
   // Initialize with optimized settings
