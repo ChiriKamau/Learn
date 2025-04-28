@@ -74,7 +74,7 @@ void loop() {
   String timestamp = getTimestamp(now);
 
   // Update display
-  updateDisplay(dht_temp, dht_humid, bmp_temp, bmp_event.pressure, altitude, timestamp);
+  updateDisplay(dht_temp, dht_humid, bmp_temp, bmp_event.pressure, altitude, now);
 
   // Save data
   bool saveSuccess = logData(dht_temp, dht_humid, bmp_temp, bmp_event.pressure, altitude, timestamp);
@@ -98,7 +98,7 @@ void drawUI() {
   M5.Lcd.drawFastVLine(240, headerHeight, valueHeight, WHITE);
 }
 
-void updateDisplay(float dht_temp, float dht_humid, float bmp_temp, float pressure, float altitude, String timestamp) {
+void updateDisplay(float dht_temp, float dht_humid, float bmp_temp, float pressure, float altitude, DateTime now) {
   M5.Lcd.setTextSize(3); // Larger text size
   
   // Column 1: DHT values
