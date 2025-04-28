@@ -17,12 +17,10 @@ const int SD_CS = 4;
 String basePath = "/hiking_data/";
 
 // Display layout
-const int headerHeight = 30;
-const int valueHeight = 80;
-const int statusHeight = 20;
+const int dataHeight = 180;  // Top area for data
+const int statusHeight = 60; // Bottom status area
 
 // Colors
-const uint16_t bgColor = BLACK;
 const uint16_t headerColor = NAVY;
 const uint16_t dhtColor = CYAN;
 const uint16_t bmpColor = YELLOW;
@@ -41,41 +39,33 @@ void setup() {
     showFatalError("SENSOR FAIL");
   }
 
-  // Initialize SD card with more robust checking
+  // Initialize SD card with verification
   if(!initSDCard()) {
-    showFatalError("SD FAIL");
+    showFatalError("SD CARD FAIL");
   }
 
   drawUI();
 }
 
 bool initSDCard() {
-  for(int i = 0; i < 5; i++) { // More retries
+  for(int i = 0; i < 5; i++) {
     if(SD.begin(SD_CS)) {
-      // Verify we can actually write
-      if(testWrite()) return true;
+      // Verify write capability
+      File testFile = SD.open("/test.txt", FILE_WRITE);
+      if(testFile) {
+        testFile.println("TEST");
+        testFile.close();
+        SD.remove("/test.txt");
+        return true;
+      }
     }
     delay(300);
   }
   return false;
 }
 
-bool testWrite() {
-  File testFile = SD.open("/test.txt", FILE_WRITE);
-  if(!testFile) return false;
-  
-  if(testFile.println("TEST") <= 0) {
-    testFile.close();
-    return false;
-  }
-  testFile.close();
-  
-  SD.remove("/test.txt");
-  return true;
-}
-
 void loop() {
-  // Read sensors
+  // Read all sensors
   float dht_temp = dht.readTemperature();
   float dht_humid = dht.readHumidity();
   
@@ -86,109 +76,131 @@ void loop() {
   bmp.getTemperature(&bmp_temp);
 
   DateTime now = rtc.now();
-  String timestamp = getTimestamp(now);
 
-  // Update display
+  // Update display (all data at top)
   updateDisplay(dht_temp, dht_humid, bmp_temp, bmp_event.pressure, altitude, now);
 
   // Save data with retry
-  bool saveSuccess = false;
-  for(int i = 0; i < 3; i++) { // Retry up to 3 times
-    saveSuccess = logData(dht_temp, dht_humid, bmp_temp, bmp_event.pressure, altitude, timestamp);
-    if(saveSuccess) break;
-    delay(200);
-  }
+  bool saveSuccess = saveToSD(dht_temp, dht_humid, bmp_temp, bmp_event.pressure, altitude, now);
   showStatus(saveSuccess);
 
   delay(5000); // 5 second interval
 }
 
 void drawUI() {
+  // Clear screen
+  M5.Lcd.fillScreen(BLACK);
+  
   // Header
-  M5.Lcd.fillRect(0, 0, 320, headerHeight, headerColor);
+  M5.Lcd.fillRect(0, 0, 320, 30, headerColor);
   M5.Lcd.setTextColor(WHITE);
   M5.Lcd.setTextSize(2);
   M5.Lcd.setCursor(80, 10);
   M5.Lcd.print("GUZA MULIMA");
-
-  // Section dividers
-  M5.Lcd.drawFastHLine(0, headerHeight, 320, WHITE);
-  M5.Lcd.drawFastVLine(80, headerHeight, valueHeight, WHITE);
-  M5.Lcd.drawFastVLine(160, headerHeight, valueHeight, WHITE);
-  M5.Lcd.drawFastVLine(240, headerHeight, valueHeight, WHITE);
 }
 
 void updateDisplay(float dht_temp, float dht_humid, float bmp_temp, float pressure, float altitude, DateTime now) {
-  M5.Lcd.setTextSize(3); // Larger text size
+  M5.Lcd.setTextSize(3);
   
-  // Column 1: DHT values
-  M5.Lcd.setTextColor(dhtColor);
-  M5.Lcd.setCursor(10, headerHeight + 20);
-  M5.Lcd.printf("dT:%.1f", dht_temp);
-  M5.Lcd.setCursor(10, headerHeight + 50);
-  M5.Lcd.printf("H:%.0f", dht_humid);
+  // Clear only the data area
+  M5.Lcd.fillRect(0, 30, 320, dataHeight-30, BLACK);
 
-  // Column 2: BMP values
-  M5.Lcd.setTextColor(bmpColor);
-  M5.Lcd.setCursor(90, headerHeight + 20);
-  M5.Lcd.printf("bT:%.1f", bmp_temp);
-
-  // Column 3: Atmospheric
-  M5.Lcd.setTextColor(atmColor);
-  M5.Lcd.setCursor(170, headerHeight + 20);
-  M5.Lcd.printf("P:%.0f", pressure);
-  M5.Lcd.setCursor(170, headerHeight + 50);
-  M5.Lcd.printf("AT:%.0f", altitude);
-
-  // Column 4: Time (Hr:Min:Sec)
+  // Row 1: Time and DHT Temp
   M5.Lcd.setTextColor(timeColor);
-  M5.Lcd.setCursor(250, headerHeight + 20);
-  M5.Lcd.printf("%02d:%02d", now.hour(), now.minute());
-  M5.Lcd.setCursor(250, headerHeight + 50);
-  M5.Lcd.printf(":%02d", now.second());
+  M5.Lcd.setCursor(10, 40);
+  M5.Lcd.printf("%02d:%02d:%02d", now.hour(), now.minute(), now.second());
+  
+  M5.Lcd.setTextColor(dhtColor);
+  M5.Lcd.setCursor(200, 40);
+  M5.Lcd.printf("dT:%.1fC", dht_temp);
+
+  // Row 2: DHT Humidity and BMP Temp
+  M5.Lcd.setTextColor(dhtColor);
+  M5.Lcd.setCursor(10, 80);
+  M5.Lcd.printf("H:%.0f%%", dht_humid);
+  
+  M5.Lcd.setTextColor(bmpColor);
+  M5.Lcd.setCursor(200, 80);
+  M5.Lcd.printf("bT:%.1fC", bmp_temp);
+
+  // Row 3: Pressure and Altitude
+  M5.Lcd.setTextColor(atmColor);
+  M5.Lcd.setCursor(10, 120);
+  M5.Lcd.printf("P:%.0fhPa", pressure);
+  
+  M5.Lcd.setCursor(200, 120);
+  M5.Lcd.printf("AT:%.0fm", altitude);
+
+  // Row 4: Date
+  M5.Lcd.setTextColor(timeColor);
+  M5.Lcd.setCursor(10, 160);
+  M5.Lcd.printf("%04d-%02d-%02d", now.year(), now.month(), now.day());
 }
 
-bool logData(float dht_temp, float dht_humid, float bmp_temp, float pressure, float altitude, String timestamp) {
-  String datePath = basePath + timestamp.substring(0, 10);
-  String filename = datePath + "/data.json";
+bool saveToSD(float dht_temp, float dht_humid, float bmp_temp, float pressure, float altitude, DateTime now) {
+  String datePath = basePath + String(now.year()) + "/" + String(now.month()) + "/" + String(now.day()) + "/";
+  String filename = datePath + "data.json";
 
-  // Create directory if needed
-  if(!SD.exists(datePath)) {
-    if(!SD.mkdir(datePath)) {
-      Serial.println("Failed to create directory");
-      return false;
-    }
-  }
-
-  File file = SD.open(filename, FILE_WRITE);
-  if(!file) {
-    Serial.println("Failed to open file");
+  // Create directory structure
+  if(!createPath(datePath)) {
+    Serial.println("Path creation failed");
     return false;
   }
 
+  // Open file with retry
+  File file;
+  for(int i = 0; i < 3; i++) {
+    file = SD.open(filename, FILE_WRITE);
+    if(file) break;
+    delay(100);
+  }
+  
+  if(!file) {
+    Serial.println("File open failed");
+    return false;
+  }
+
+  // Create JSON data
   StaticJsonDocument<256> doc;
-  doc["time"] = timestamp;
+  doc["timestamp"] = getTimestamp(now);
   doc["dht_temp"] = isnan(dht_temp) ? NULL : dht_temp;
   doc["dht_humid"] = isnan(dht_humid) ? NULL : dht_humid;
   doc["bmp_temp"] = bmp_temp;
   doc["pressure"] = pressure;
   doc["altitude"] = altitude;
 
+  // Write data
   size_t bytesWritten = serializeJson(doc, file);
   file.println(); // Add newline
   file.close();
 
-  if(bytesWritten == 0) {
-    Serial.println("Failed to write data");
-    return false;
-  }
+  return bytesWritten > 0;
+}
 
+bool createPath(String path) {
+  String currentPath = "";
+  int startIdx = 0;
+  int endIdx = path.indexOf('/', startIdx);
+  
+  while(endIdx > 0) {
+    currentPath = path.substring(0, endIdx);
+    if(!SD.exists(currentPath)) {
+      if(!SD.mkdir(currentPath)) {
+        return false;
+      }
+    }
+    startIdx = endIdx + 1;
+    endIdx = path.indexOf('/', startIdx);
+  }
   return true;
 }
 
 void showStatus(bool success) {
-  M5.Lcd.fillRect(0, headerHeight + valueHeight, 320, statusHeight, 
-                 success ? successColor : errorColor);
+  M5.Lcd.fillRect(0, dataHeight, 320, statusHeight, success ? successColor : errorColor);
+  M5.Lcd.setTextColor(WHITE);
+  M5.Lcd.setTextSize(2);
+  M5.Lcd.setCursor(120, dataHeight + 20);
+  M5.Lcd.print(success ? "SAVED" : "ERROR");
 }
 
 void showFatalError(const char* message) {
