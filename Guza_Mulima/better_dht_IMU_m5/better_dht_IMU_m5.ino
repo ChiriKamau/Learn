@@ -17,15 +17,14 @@ const int SD_CS = 4;
 String basePath = "/hiking_data/";
 
 // Display layout
-const int dataHeight = 180;  // Top area for data
-const int statusHeight = 60; // Bottom status area
+const int dateHeight = 30;    // Top date display
+const int dataHeight = 190;   // Main data area
+const int statusHeight = 20;  // Thin status bar at bottom
 
 // Colors
-const uint16_t headerColor = NAVY;
-const uint16_t dhtColor = CYAN;
-const uint16_t bmpColor = YELLOW;
-const uint16_t atmColor = GREEN;
-const uint16_t timeColor = MAROON;
+const uint16_t dateColor = BLUE;
+const uint16_t leftColor = GREEN;
+const uint16_t rightColor = YELLOW;
 const uint16_t successColor = GREEN;
 const uint16_t errorColor = RED;
 
@@ -41,10 +40,8 @@ void setup() {
 
   // Initialize SD card with verification
   if(!initSDCard()) {
-    showFatalError("SD CARD FAIL");
+    showFatalError("SD FAIL");
   }
-
-  drawUI();
 }
 
 bool initSDCard() {
@@ -77,7 +74,7 @@ void loop() {
 
   DateTime now = rtc.now();
 
-  // Update display (all data at top)
+  // Update display
   updateDisplay(dht_temp, dht_humid, bmp_temp, bmp_event.pressure, altitude, now);
 
   // Save data with retry
@@ -87,54 +84,37 @@ void loop() {
   delay(5000); // 5 second interval
 }
 
-void drawUI() {
+void updateDisplay(float dht_temp, float dht_humid, float bmp_temp, float pressure, float altitude, DateTime now) {
   // Clear screen
   M5.Lcd.fillScreen(BLACK);
   
-  // Header
-  M5.Lcd.fillRect(0, 0, 320, 30, headerColor);
-  M5.Lcd.setTextColor(WHITE);
+  // 1. Date at top (centered)
+  M5.Lcd.setTextColor(dateColor);
   M5.Lcd.setTextSize(2);
   M5.Lcd.setCursor(80, 10);
-  M5.Lcd.print("GUZA MULIMA");
-}
+  M5.Lcd.printf("%04d-%02d-%02d", now.year(), now.month(), now.day());
 
-void updateDisplay(float dht_temp, float dht_humid, float bmp_temp, float pressure, float altitude, DateTime now) {
+  // 2. Main data area (divided left/right)
   M5.Lcd.setTextSize(3);
-  
-  // Clear only the data area
-  M5.Lcd.fillRect(0, 30, 320, dataHeight-30, BLACK);
+  M5.Lcd.drawFastVLine(160, dateHeight, dataHeight, WHITE); // Vertical divider
 
-  // Row 1: Time and DHT Temp
-  M5.Lcd.setTextColor(timeColor);
-  M5.Lcd.setCursor(10, 40);
-  M5.Lcd.printf("%02d:%02d:%02d", now.hour(), now.minute(), now.second());
-  
-  M5.Lcd.setTextColor(dhtColor);
-  M5.Lcd.setCursor(200, 40);
+  // Left column data
+  M5.Lcd.setTextColor(leftColor);
+  M5.Lcd.setCursor(20, dateHeight + 30);
   M5.Lcd.printf("dT:%.1fC", dht_temp);
-
-  // Row 2: DHT Humidity and BMP Temp
-  M5.Lcd.setTextColor(dhtColor);
-  M5.Lcd.setCursor(10, 80);
+  M5.Lcd.setCursor(20, dateHeight + 80);
   M5.Lcd.printf("H:%.0f%%", dht_humid);
-  
-  M5.Lcd.setTextColor(bmpColor);
-  M5.Lcd.setCursor(200, 80);
-  M5.Lcd.printf("bT:%.1fC", bmp_temp);
-
-  // Row 3: Pressure and Altitude
-  M5.Lcd.setTextColor(atmColor);
-  M5.Lcd.setCursor(10, 120);
-  M5.Lcd.printf("P:%.0fhPa", pressure);
-  
-  M5.Lcd.setCursor(200, 120);
+  M5.Lcd.setCursor(20, dateHeight + 130);
   M5.Lcd.printf("AT:%.0fm", altitude);
 
-  // Row 4: Date
-  M5.Lcd.setTextColor(timeColor);
-  M5.Lcd.setCursor(10, 160);
-  M5.Lcd.printf("%04d-%02d-%02d", now.year(), now.month(), now.day());
+  // Right column data
+  M5.Lcd.setTextColor(rightColor);
+  M5.Lcd.setCursor(180, dateHeight + 30);
+  M5.Lcd.printf("%02d:%02d:%02d", now.hour(), now.minute(), now.second());
+  M5.Lcd.setCursor(180, dateHeight + 80);
+  M5.Lcd.printf("bT:%.1fC", bmp_temp);
+  M5.Lcd.setCursor(180, dateHeight + 130);
+  M5.Lcd.printf("P:%.0fhPa", pressure);
 }
 
 bool saveToSD(float dht_temp, float dht_humid, float bmp_temp, float pressure, float altitude, DateTime now) {
@@ -142,10 +122,7 @@ bool saveToSD(float dht_temp, float dht_humid, float bmp_temp, float pressure, f
   String filename = datePath + "data.json";
 
   // Create directory structure
-  if(!createPath(datePath)) {
-    Serial.println("Path creation failed");
-    return false;
-  }
+  if(!createPath(datePath)) return false;
 
   // Open file with retry
   File file;
@@ -154,11 +131,7 @@ bool saveToSD(float dht_temp, float dht_humid, float bmp_temp, float pressure, f
     if(file) break;
     delay(100);
   }
-  
-  if(!file) {
-    Serial.println("File open failed");
-    return false;
-  }
+  if(!file) return false;
 
   // Create JSON data
   StaticJsonDocument<256> doc;
@@ -171,7 +144,7 @@ bool saveToSD(float dht_temp, float dht_humid, float bmp_temp, float pressure, f
 
   // Write data
   size_t bytesWritten = serializeJson(doc, file);
-  file.println(); // Add newline
+  file.println();
   file.close();
 
   return bytesWritten > 0;
@@ -185,9 +158,7 @@ bool createPath(String path) {
   while(endIdx > 0) {
     currentPath = path.substring(0, endIdx);
     if(!SD.exists(currentPath)) {
-      if(!SD.mkdir(currentPath)) {
-        return false;
-      }
+      if(!SD.mkdir(currentPath)) return false;
     }
     startIdx = endIdx + 1;
     endIdx = path.indexOf('/', startIdx);
@@ -196,26 +167,18 @@ bool createPath(String path) {
 }
 
 void showStatus(bool success) {
-  M5.Lcd.fillRect(0, dataHeight, 320, statusHeight, success ? successColor : errorColor);
-  M5.Lcd.setTextColor(WHITE);
-  M5.Lcd.setTextSize(2);
-  M5.Lcd.setCursor(120, dataHeight + 20);
-  M5.Lcd.print(success ? "SAVED" : "ERROR");
+  M5.Lcd.fillRect(0, dateHeight + dataHeight, 320, statusHeight, success ? successColor : errorColor);
 }
 
 void showFatalError(const char* message) {
   M5.Lcd.fillScreen(RED);
   M5.Lcd.setTextColor(WHITE);
-  M5.Lcd.setTextSize(3);
-  M5.Lcd.setCursor(80, 100);
+  M5.Lcd.setTextSize(2);
+  M5.Lcd.setCursor(80, 110);
   M5.Lcd.println(message);
   while(1);
 }
 
 String getTimestamp(DateTime now) {
   char timestamp[20];
-  snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02dT%02d:%02d:%02d",
-          now.year(), now.month(), now.day(),
-          now.hour(), now.minute(), now.second());
-  return String(timestamp);
-}
+  snprintf(timestamp, sizeof(timestamp),
