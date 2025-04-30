@@ -86,8 +86,6 @@ void updateDisplay(float dht_temp, float dht_humid, float bmp_temp, float pressu
   DateTime now = rtc.now();  // Fresh time reading
 
   M5.Lcd.fillScreen(BLACK);
-}
-
 
   // Header bar with blue background
   M5.Lcd.fillRect(0, 0, 320, headerHeight, BLUE);
@@ -111,7 +109,7 @@ void updateDisplay(float dht_temp, float dht_humid, float bmp_temp, float pressu
   M5.Lcd.setCursor(200, 55);
   M5.Lcd.printf("%02d:%02d", now.hour(), now.minute());
 
-  // Boxes layout (only two columns now)
+  // Boxes layout
   M5.Lcd.drawRect(10, 90, 300, 120, WHITE);   // Main box
   M5.Lcd.drawLine(160, 90, 160, 210, WHITE);  // Middle divider
 
@@ -147,6 +145,7 @@ void updateDisplay(float dht_temp, float dht_humid, float bmp_temp, float pressu
   M5.Lcd.setCursor(200, 145);
   M5.Lcd.printf("%.0fh", pressure);  // Remove 'Pa' to fit better
 }
+
 
 
 bool saveToSD(float dht_temp, float dht_humid, float bmp_temp, float pressure, float altitude, DateTime now) {
