@@ -99,54 +99,49 @@ void updateDisplay(float dht_temp, float dht_humid, float bmp_temp, float pressu
   
   // Draw grid lines
   M5.Lcd.drawRect(10, 40, 300, 200, WHITE);  // Main border
-  M5.Lcd.drawLine(160, 40, 160, 240, WHITE); // Vertical divider
+  M5.Lcd.drawLine(160, 40, 160, 175, WHITE); // Vertical divider - stops before AT/P row
   
-  // Draw the date/time in the first row
-  M5.Lcd.setTextSize(2);
+  // Draw the date/time in the first row with larger text
+  M5.Lcd.setTextSize(3);
   
-  // Date (left column)
+  // Date (left column) - without year
   M5.Lcd.setCursor(20, 50);
-  M5.Lcd.print("Date:");
-  M5.Lcd.setCursor(20, 70);
-  M5.Lcd.printf("%04d-%02d-%02d", now.year(), now.month(), now.day());
+  M5.Lcd.printf("%02d-%02d", now.month(), now.day());
   
   // Time (right column)
   M5.Lcd.setCursor(180, 50);
-  M5.Lcd.print("Time:");
-  M5.Lcd.setCursor(180, 70);
-  M5.Lcd.printf("%02d:%02d:%02d", now.hour(), now.minute(), now.second());
+  M5.Lcd.printf("%02d:%02d", now.hour(), now.minute());
   
   // Draw horizontal line after date/time
-  M5.Lcd.drawLine(10, 95, 310, 95, WHITE);
+  M5.Lcd.drawLine(10, 85, 310, 85, WHITE);
   
-  // DHT section (left column)
-  M5.Lcd.setCursor(20, 105);
-  M5.Lcd.print("DHT:");
-  
+  // DHT and BMU values
+  // Left column
   M5.Lcd.setTextColor(dhtColor);
-  M5.Lcd.setCursor(20, 125);
+  M5.Lcd.setCursor(20, 95);
   M5.Lcd.printf("T: %.1fC", dht_temp);
   
-  M5.Lcd.setCursor(20, 145);
+  M5.Lcd.setCursor(20, 135);
   M5.Lcd.printf("H: %.0f%%", dht_humid);
   
-  M5.Lcd.setCursor(20, 175);
-  M5.Lcd.print("AT:");
-  M5.Lcd.setCursor(20, 195);
-  M5.Lcd.printf("%.0fm", altitude);
-  
-  // BMU section (right column)
-  M5.Lcd.setTextColor(titleColor);
-  M5.Lcd.setCursor(180, 105);
-  M5.Lcd.print("BMU:");
-  
+  // Right column
   M5.Lcd.setTextColor(bmpColor);
-  M5.Lcd.setCursor(180, 125);
+  M5.Lcd.setCursor(180, 95);
   M5.Lcd.printf("T: %.1fC", bmp_temp);
   
-  M5.Lcd.setCursor(180, 175);
+  // Draw horizontal line before the AT/P row
+  M5.Lcd.drawLine(10, 175, 310, 175, WHITE);
+  
+  // AT and P in one box that stretches across - larger values
+  M5.Lcd.setTextSize(3);
+  M5.Lcd.setTextColor(dhtColor);
+  M5.Lcd.setCursor(20, 190);
+  M5.Lcd.print("AT:");
+  M5.Lcd.printf("%.0fm", altitude);
+  
+  M5.Lcd.setTextColor(bmpColor);
+  M5.Lcd.setCursor(180, 190);
   M5.Lcd.print("P:");
-  M5.Lcd.setCursor(180, 195);
   M5.Lcd.printf("%.0fhPa", pressure);
 }
 
@@ -191,8 +186,8 @@ bool createPath(String path) {
 }
 
 void showStatus(bool success) {
-  // Show red/green status bar at bottom as per sketch
-  M5.Lcd.fillRect(10, 245, 300, 20, success ? successColor : errorColor);
+  // Show red/green line at bottom as per sketch
+  M5.Lcd.fillRect(10, 242, 300, 5, success ? successColor : errorColor);
 }
 
 void showFatalError(const char* message) {
