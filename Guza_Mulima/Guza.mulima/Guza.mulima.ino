@@ -82,30 +82,33 @@ void loop() {
 
   delay(5000);
 }
+void updateDisplay(float dht_temp, float dht_humid, float bmp_temp, float pressure, float altitude, DateTime unused) {
+  DateTime now = rtc.now();  // Fresh time reading
 
-void updateDisplay(float dht_temp, float dht_humid, float bmp_temp, float pressure, float altitude, DateTime now) {
   M5.Lcd.fillScreen(BLACK);
+}
+
 
   // Header bar with blue background
   M5.Lcd.fillRect(0, 0, 320, headerHeight, BLUE);
   M5.Lcd.setTextColor(WHITE);
   M5.Lcd.setTextSize(2);
   M5.Lcd.setCursor(20, 10);
-  M5.Lcd.print("Guza Mulima");
+  M5.Lcd.print("    Guza Mulima");
 
   // Altitude on top-left
-  M5.Lcd.setTextColor(dhtColor);
+  M5.Lcd.setTextColor(RED);
   M5.Lcd.setTextSize(2);
-  M5.Lcd.setCursor(10, 45);
+  M5.Lcd.setCursor(10, 55);
   M5.Lcd.print("A:");
   M5.Lcd.setTextSize(3);  // Larger value
-  M5.Lcd.setCursor(40, 40);
+  M5.Lcd.setCursor(40, 55);
   M5.Lcd.printf("%.0fm", altitude);
 
   // Time on top-right
   M5.Lcd.setTextColor(WHITE);
   M5.Lcd.setTextSize(3);
-  M5.Lcd.setCursor(200, 40);
+  M5.Lcd.setCursor(200, 55);
   M5.Lcd.printf("%02d:%02d", now.hour(), now.minute());
 
   // Boxes layout (only two columns now)
